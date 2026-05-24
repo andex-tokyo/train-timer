@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Train Timer</string>
+    <string name="widget_description">次の一本まで、あと何分？</string>
+    <string name="express_mode">急行モード</string>
+</resources>

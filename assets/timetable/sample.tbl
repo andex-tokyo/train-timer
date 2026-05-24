@@ -1,0 +1,56 @@
+A:快速;快;#4040FF
+X:普通;無印;#000000
+a:府中本町;府
+b:西船橋;西
+c:東所沢;所
+d:新習志野;習
+e:海浜幕張;幕
+f:上総一ノ宮;一
+g:誉田;誉
+h:君津;君
+i:成東;成
+x:蘇我;無印
+[MON][TUE][WED][THU][FRI]
+# 海浜幕張・蘇我・府中本町方面(平日)
+5: 
+6: Xa18 Xa42 Xb52
+7: Xa05 Xa24 Xb40 Xa48
+8: Xc04 Xa19 Xa25 Xb33 Xa39 Xa48 Xc57
+9: Xc07 Xa21 Xa34
+10: Xa02 Xa24 Xa42
+11: Xa02 Xa22 Xa42
+12: Xa02 Xa22 Xa42
+13: Xa02 Xa22 Xa42
+14: Xa02 Xa22 Xa42
+15: Xa02 Xa22 Xa42
+16: Xa01 Xa22 Xa41 Xa57
+17: Xa16 Xa35 Xa48
+18: Xa04 Xa21 Xb34 Xa42 Xb51
+19: Xa07 Xa19 Xa37 Xb52
+20: Xa02 Xa20 Xa36 Xa46
+21: Xa00 Xa23 Xa47
+22: Xa05 Xa23 Xa40 Xc53
+23: Xc14 Xc49
+0: 
+[SAT][SUN][HOL]
+# 海浜幕張・蘇我・府中本町方面(土休日)
+5: 
+6: Xa32 Xa51
+7: Xa08 Xa23 Xa35 Xa57
+8: Xc11 Xa19 Xb34 Xa42
+9: Xa05 Xa22 Xa39
+10: Xa04 Xa23 Xa41
+11: Xa04 Xa22 Xa41
+12: Xa05 Xa22 Xa41
+13: Xa05 Xa22 Xa40
+14: Xa05 Xa22 Xa41
+15: Xa05 Xa22 Xa41
+16: Xa05 Xa23 Xa41
+17: Xa08 Xa23 Xa41
+18: Xa03 Xa23 Xa49
+19: Xa18 Xa37 Xa56
+20: Xa14 Xa26 Xb33 Xa45
+21: Xa00 Xa20 Xb30 Xa44 Xb57
+22: Xa06 Xa24 Xa40 Xc53
+23: Xc13 Xc49
+0:
