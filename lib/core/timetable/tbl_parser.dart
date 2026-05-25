@@ -54,7 +54,10 @@ class TblParser {
             shortName: parts[1],
           );
         } else {
-          warnings.add('Line $lineNo: invalid definition "$line"');
+          // Single-value definitions are used by some TBL generators for
+          // platform notes such as "A:2番線発車". The current app does not
+          // display them, but they are valid metadata and should not block
+          // timetable parsing.
         }
         continue;
       }
@@ -80,12 +83,12 @@ class TblParser {
           .split(RegExp(r'\s+'))
           .where((e) => e.isNotEmpty);
       for (final token in tokens) {
-        final tokenMatch = RegExp(r'^(.)(.)(\d{2})$').firstMatch(token);
+        final tokenMatch = RegExp(r'^(.)(.)(.*?)(\d{2})$').firstMatch(token);
         if (tokenMatch == null) {
           warnings.add('Line $lineNo: invalid train token "$token"');
           continue;
         }
-        final minute = int.tryParse(tokenMatch.group(3)!);
+        final minute = int.tryParse(tokenMatch.group(4)!);
         if (minute == null || minute > 59) {
           warnings.add('Line $lineNo: invalid minute "$token"');
           continue;

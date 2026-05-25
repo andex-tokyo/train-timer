@@ -31,6 +31,30 @@ b:西船橋;西
     expect(result.timetable.entries.length, 8);
   });
 
+  test('parses train tokens with platform markers before minute', () {
+    const source = '''
+A:2番線発車
+B:1番線発車
+C:快速;快;#4040FF
+X:普通;無印;#000000
+a:府中本町;府
+b:西船橋;西
+[MON][TUE][WED][THU][FRI]
+6: XaA22 XaA45 XbA56
+7: XaB09 XbB44
+''';
+
+    final result = TblParser().parse(source);
+
+    expect(result.warnings, isEmpty);
+    expect(result.timetable.entries.length, 5);
+    expect(result.timetable.entries.first.kindCode, 'X');
+    expect(result.timetable.entries.first.destinationCode, 'a');
+    expect(result.timetable.entries.first.minute, 22);
+    expect(result.timetable.entries.last.destinationCode, 'b');
+    expect(result.timetable.entries.last.minute, 44);
+  });
+
   test('finds next weekday departure across midnight', () {
     final timetable = TblParser().parse(sample).timetable;
     final next = const NextDepartureCalculator().findNext(
