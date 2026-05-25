@@ -134,7 +134,7 @@ class _HomePageState extends ConsumerState<HomePage>
       data: (state) {
         final payload = state.widgetPayload;
         final countdown = _appCountdownText(state);
-        final followingDeparture = _followingDepartureLabel(state);
+        final followingDepartures = _followingDepartureLabels(state);
         final lastDeparture =
             state.nextDeparture != null && payload.isLastDeparture;
         return Scaffold(
@@ -180,9 +180,9 @@ class _HomePageState extends ConsumerState<HomePage>
                   departureTime: payload.departureTime,
                   lastDeparture: lastDeparture,
                 ),
-                if (followingDeparture != null) ...[
+                if (followingDepartures.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  FollowingDepartureTile(label: followingDeparture),
+                  FollowingDeparturesPanel(departures: followingDepartures),
                 ],
               ],
             ),
@@ -1123,10 +1123,10 @@ class CountdownDisplay extends StatelessWidget {
   }
 }
 
-class FollowingDepartureTile extends StatelessWidget {
-  const FollowingDepartureTile({super.key, required this.label});
+class FollowingDeparturesPanel extends StatelessWidget {
+  const FollowingDeparturesPanel({super.key, required this.departures});
 
-  final String label;
+  final List<({String time, String destination})> departures;
 
   @override
   Widget build(BuildContext context) {
@@ -1139,6 +1139,7 @@ class FollowingDepartureTile extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(Icons.train_outlined, color: colorScheme.secondary),
             const SizedBox(width: 12),
@@ -1148,20 +1149,35 @@ class FollowingDepartureTile extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '次の一本',
+                    '次の電車',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: colorScheme.onSecondaryContainer,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                  const SizedBox(height: 4),
+                  for (final departure in departures)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Row(
+                        children: [
+                          Text(
+                            departure.time,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              departure.destination,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -1190,18 +1206,21 @@ String _appCountdownText(TrainTimerState state) {
   return '$minutes:${seconds.toString().padLeft(2, '0')}';
 }
 
-String? _followingDepartureLabel(TrainTimerState state) {
-  final departure = state.followingDeparture;
-  if (departure == null) {
-    return null;
-  }
-  final destination =
-      state.timetable.destinations[departure.entry.destinationCode];
-  final destinationName = destination?.name.trim();
-  final destinationLabel = destinationName == null || destinationName.isEmpty
-      ? state.selectedProfile.direction
-      : '$destinationName行';
-  return '${_departureTimeLabel(departure.departureAt)}  $destinationLabel';
+List<({String time, String destination})> _followingDepartureLabels(
+  TrainTimerState state,
+) {
+  return state.followingDepartures.map((departure) {
+    final destination =
+        state.timetable.destinations[departure.entry.destinationCode];
+    final destinationName = destination?.name.trim();
+    final destinationLabel = destinationName == null || destinationName.isEmpty
+        ? state.selectedProfile.direction
+        : '$destinationName行';
+    return (
+      time: _departureTimeLabel(departure.departureAt),
+      destination: destinationLabel,
+    );
+  }).toList();
 }
 
 String _departureTimeLabel(DateTime departureAt) {

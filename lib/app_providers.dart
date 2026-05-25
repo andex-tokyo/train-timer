@@ -32,7 +32,7 @@ class TrainTimerState {
     required this.selectedProfileId,
     required this.expressMode,
     required this.nextDeparture,
-    required this.followingDeparture,
+    required this.followingDepartures,
     required this.timetable,
     required this.parseWarnings,
     required this.autoSwitchRules,
@@ -42,7 +42,7 @@ class TrainTimerState {
   final String selectedProfileId;
   final bool expressMode;
   final NextDeparture? nextDeparture;
-  final NextDeparture? followingDeparture;
+  final List<NextDeparture> followingDepartures;
   final Timetable timetable;
   final List<String> parseWarnings;
   final List<AutoSwitchRule> autoSwitchRules;
@@ -65,7 +65,7 @@ class TrainTimerState {
     String? selectedProfileId,
     bool? expressMode,
     Object? nextDeparture = _unset,
-    Object? followingDeparture = _unset,
+    List<NextDeparture>? followingDepartures,
     Timetable? timetable,
     List<String>? parseWarnings,
     List<AutoSwitchRule>? autoSwitchRules,
@@ -77,9 +77,7 @@ class TrainTimerState {
       nextDeparture: nextDeparture == _unset
           ? this.nextDeparture
           : nextDeparture as NextDeparture?,
-      followingDeparture: followingDeparture == _unset
-          ? this.followingDeparture
-          : followingDeparture as NextDeparture?,
+      followingDepartures: followingDepartures ?? this.followingDepartures,
       timetable: timetable ?? this.timetable,
       parseWarnings: parseWarnings ?? this.parseWarnings,
       autoSwitchRules: autoSwitchRules ?? this.autoSwitchRules,
@@ -102,13 +100,13 @@ class TrainTimerController extends AsyncNotifier<TrainTimerState> {
     final parsed = await _loadTimetable(
       profiles.firstWhere((profile) => profile.id == selectedId),
     );
-    final upcoming = _calculator.findUpcoming(parsed.timetable, DateTime.now());
+    final upcoming = _upcoming(parsed.timetable);
     final initial = TrainTimerState(
       profiles: profiles,
       selectedProfileId: selectedId,
       expressMode: expressMode,
       nextDeparture: upcoming.firstOrNull,
-      followingDeparture: upcoming.secondOrNull,
+      followingDepartures: _followingDepartures(upcoming),
       timetable: parsed.timetable,
       parseWarnings: parsed.warnings,
       autoSwitchRules: rules,
@@ -130,14 +128,11 @@ class TrainTimerController extends AsyncNotifier<TrainTimerState> {
       return;
     }
 
-    final upcoming = _calculator.findUpcoming(
-      current.timetable,
-      DateTime.now(),
-    );
+    final upcoming = _upcoming(current.timetable);
     final next = upcoming.firstOrNull;
     final refreshed = current.copyWith(
       nextDeparture: next,
-      followingDeparture: upcoming.secondOrNull,
+      followingDepartures: _followingDepartures(upcoming),
     );
     if (current.expressMode && next?.entry != current.nextDeparture?.entry) {
       await setExpressMode(false);
@@ -195,7 +190,7 @@ class TrainTimerController extends AsyncNotifier<TrainTimerState> {
       timetable: parsed.timetable,
       parseWarnings: parsed.warnings,
       nextDeparture: upcoming.firstOrNull,
-      followingDeparture: upcoming.secondOrNull,
+      followingDepartures: _followingDepartures(upcoming),
     );
     state = AsyncData(updated);
     await ref.read(homeWidgetServiceProvider).update(updated.widgetPayload);
@@ -223,14 +218,14 @@ class TrainTimerController extends AsyncNotifier<TrainTimerState> {
     final profiles = [...current.profiles, profile];
     await ref.read(profileRepositoryProvider).saveProfiles(profiles);
     final parsed = await _loadTimetable(profile);
-    final upcoming = _calculator.findUpcoming(parsed.timetable, DateTime.now());
+    final upcoming = _upcoming(parsed.timetable);
     final updated = current.copyWith(
       profiles: profiles,
       selectedProfileId: profile.id,
       timetable: parsed.timetable,
       parseWarnings: parsed.warnings,
       nextDeparture: upcoming.firstOrNull,
-      followingDeparture: upcoming.secondOrNull,
+      followingDepartures: _followingDepartures(upcoming),
     );
     state = AsyncData(updated);
     await ref.read(homeWidgetServiceProvider).update(updated.widgetPayload);
@@ -245,15 +240,12 @@ class TrainTimerController extends AsyncNotifier<TrainTimerState> {
     var updated = current.copyWith(profiles: profiles);
     if (current.selectedProfileId == profile.id) {
       final parsed = await _loadTimetable(profile);
-      final upcoming = _calculator.findUpcoming(
-        parsed.timetable,
-        DateTime.now(),
-      );
+      final upcoming = _upcoming(parsed.timetable);
       updated = updated.copyWith(
         timetable: parsed.timetable,
         parseWarnings: parsed.warnings,
         nextDeparture: upcoming.firstOrNull,
-        followingDeparture: upcoming.secondOrNull,
+        followingDepartures: _followingDepartures(upcoming),
       );
     }
     state = AsyncData(updated);
@@ -274,14 +266,14 @@ class TrainTimerController extends AsyncNotifier<TrainTimerState> {
         : current.selectedProfileId;
     final selected = profiles.firstWhere((profile) => profile.id == selectedId);
     final parsed = await _loadTimetable(selected);
-    final upcoming = _calculator.findUpcoming(parsed.timetable, DateTime.now());
+    final upcoming = _upcoming(parsed.timetable);
     final updated = current.copyWith(
       profiles: profiles,
       selectedProfileId: selectedId,
       timetable: parsed.timetable,
       parseWarnings: parsed.warnings,
       nextDeparture: upcoming.firstOrNull,
-      followingDeparture: upcoming.secondOrNull,
+      followingDepartures: _followingDepartures(upcoming),
     );
     state = AsyncData(updated);
     await ref.read(homeWidgetServiceProvider).update(updated.widgetPayload);
@@ -325,13 +317,13 @@ class TrainTimerController extends AsyncNotifier<TrainTimerState> {
     final selectedId = repository.loadSelectedProfileId(profiles);
     final selected = profiles.firstWhere((profile) => profile.id == selectedId);
     final parsed = await _loadTimetable(selected);
-    final upcoming = _calculator.findUpcoming(parsed.timetable, DateTime.now());
+    final upcoming = _upcoming(parsed.timetable);
     final updated = TrainTimerState(
       profiles: profiles,
       selectedProfileId: selectedId,
       expressMode: false,
       nextDeparture: upcoming.firstOrNull,
-      followingDeparture: upcoming.secondOrNull,
+      followingDepartures: _followingDepartures(upcoming),
       timetable: parsed.timetable,
       parseWarnings: parsed.warnings,
       autoSwitchRules: rules,
@@ -367,11 +359,14 @@ class TrainTimerController extends AsyncNotifier<TrainTimerState> {
   }
 
   List<NextDeparture> _upcoming(Timetable timetable) {
-    return _calculator.findUpcoming(timetable, DateTime.now());
+    return _calculator.findUpcoming(timetable, DateTime.now(), limit: 4);
+  }
+
+  List<NextDeparture> _followingDepartures(List<NextDeparture> upcoming) {
+    return upcoming.skip(1).take(3).toList();
   }
 }
 
 extension _SecondOrNull<T> on List<T> {
   T? get firstOrNull => isEmpty ? null : first;
-  T? get secondOrNull => length < 2 ? null : this[1];
 }

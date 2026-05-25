@@ -337,16 +337,19 @@ private object TrainTimerRemoteViews {
 
     fun scheduleDepartureRefresh(context: Context, departureEpochMillis: Long) {
         DEPARTURE_REFRESH_OFFSETS.forEachIndexed { index, offset ->
+            val requestCode = REQUEST_REFRESH_DEPARTURE + index
+            cancelRefresh(context, requestCode)
             scheduleRefresh(
                 context = context,
                 triggerAt = departureEpochMillis + offset,
-                requestCode = REQUEST_REFRESH_DEPARTURE + index,
-                useAlarmClock = index == 0,
+                requestCode = requestCode,
+                useAlarmClock = false,
             )
         }
     }
 
     fun scheduleOperationResume(context: Context, departureEpochMillis: Long) {
+        cancelRefresh(context, REQUEST_REFRESH_DEPARTURE + 100)
         scheduleRefresh(
             context = context,
             triggerAt = departureEpochMillis - 3_600_000,
@@ -394,6 +397,23 @@ private object TrainTimerRemoteViews {
         }
     }
 
+    private fun cancelRefresh(context: Context, requestCode: Int) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, TrainTimerWidgetReceiver::class.java).apply {
+            action = ACTION_REFRESH_DEPARTURE
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+        )
+        if (pendingIntent != null) {
+            alarmManager.cancel(pendingIntent)
+            pendingIntent.cancel()
+        }
+    }
+
     fun advanceToNextDeparture(context: Context) {
         val prefs = HomeWidgetPlugin.getData(context)
         val next = nextDepartureFromCache(prefs)
@@ -408,10 +428,21 @@ private object TrainTimerRemoteViews {
                 putString("station", next.station)
                 putString("direction", next.direction)
                 putString("departureTime", next.departureTime)
-                putString("countdown", formatCountdown(next.departureEpochMillis))
+                putString(
+                    "countdown",
+                    if (next.shouldShowOperationEnded()) {
+                        "運行終了"
+                    } else {
+                        formatCountdown(next.departureEpochMillis)
+                    },
+                )
                 putBoolean("isLastDeparture", next.isLastDeparture)
                 putLong("departureEpochMillis", next.departureEpochMillis)
-                scheduleDepartureRefresh(context, next.departureEpochMillis)
+                if (next.shouldShowOperationEnded()) {
+                    scheduleOperationResume(context, next.departureEpochMillis)
+                } else {
+                    scheduleDepartureRefresh(context, next.departureEpochMillis)
+                }
             }
         }.apply()
     }
@@ -419,6 +450,7 @@ private object TrainTimerRemoteViews {
     private fun nextDepartureFromCache(prefs: SharedPreferences): NativeDeparture? {
         val departures = JSONArray(prefs.getString("departuresJson", "[]") ?: "[]")
         val now = System.currentTimeMillis()
+        var previousWasLastDeparture = false
         for (index in 0 until departures.length()) {
             val item = departures.getJSONObject(index)
             val epoch = item.optLong("departureEpochMillis", 0L)
@@ -431,9 +463,15 @@ private object TrainTimerRemoteViews {
                         prefs.getString("departureTime", "--:--") ?: "--:--",
                     ),
                     departureEpochMillis = epoch,
+                    isFirstDeparture = if (item.has("isFirstDeparture")) {
+                        item.optBoolean("isFirstDeparture", false)
+                    } else {
+                        previousWasLastDeparture
+                    },
                     isLastDeparture = item.optBoolean("isLastDeparture", false),
                 )
             }
+            previousWasLastDeparture = item.optBoolean("isLastDeparture", false)
         }
         return null
     }
@@ -454,8 +492,14 @@ private object TrainTimerRemoteViews {
         val direction: String,
         val departureTime: String,
         val departureEpochMillis: Long,
+        val isFirstDeparture: Boolean,
         val isLastDeparture: Boolean,
-    )
+    ) {
+        fun shouldShowOperationEnded(): Boolean {
+            return isFirstDeparture &&
+                departureEpochMillis - System.currentTimeMillis() > 3_600_000
+        }
+    }
 }
 
 private data class TrainTimerWidgetState(

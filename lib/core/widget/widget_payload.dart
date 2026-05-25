@@ -173,11 +173,22 @@ class WidgetPayloadFactory {
         'direction': destination == null
             ? profile.direction
             : '${destination.name}行',
-        'departureTime': '${DateFormat('HH:mm').format(candidate.departureAt)}発',
+        'departureTime':
+            '${DateFormat('HH:mm').format(candidate.departureAt)}発',
         'departureEpochMillis': candidate.departureAt.millisecondsSinceEpoch,
+        'isFirstDeparture': _isFirstDeparture(candidate.entry, timetable),
         'isLastDeparture': _isLastDeparture(candidate.entry, timetable),
       };
     }).toList();
+  }
+
+  bool _isFirstDeparture(TimetableEntry entry, Timetable timetable) {
+    final entryMinute = _serviceMinute(entry);
+    return !timetable.entries.any(
+      (candidate) =>
+          candidate.serviceDay == entry.serviceDay &&
+          _serviceMinute(candidate) < entryMinute,
+    );
   }
 
   ServiceDay _serviceDayFor(DateTime date) {

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:train_timer/core/widget/widget_payload.dart';
 import 'package:train_timer/core/timetable/next_departure_calculator.dart';
@@ -200,5 +202,50 @@ b:西船橋;西
     );
 
     expect(payload.countdown, 'あと 90分');
+  });
+
+  test('marks first departures in widget cache for native refresh', () {
+    const profile = TrainProfile(
+      id: 'test',
+      name: 'test',
+      station: '舞浜',
+      line: '京葉線',
+      direction: '東京方面',
+      timetableAsset: 'assets/timetable/sample.tbl',
+    );
+    const first = TimetableEntry(
+      serviceDay: ServiceDay.weekday,
+      hour: 4,
+      minute: 36,
+      kindCode: 'X',
+      destinationCode: 'a',
+    );
+    const second = TimetableEntry(
+      serviceDay: ServiceDay.weekday,
+      hour: 4,
+      minute: 50,
+      kindCode: 'X',
+      destinationCode: 'a',
+    );
+    final payload = const WidgetPayloadFactory().from(
+      profile: profile,
+      departure: NextDeparture(
+        entry: first,
+        departureAt: DateTime(2026, 5, 25, 4, 36),
+        remaining: Duration(hours: 3),
+      ),
+      timetable: Timetable(
+        kinds: {},
+        destinations: {
+          'a': Destination(code: 'a', name: '府中本町', shortName: '府'),
+        },
+        entries: [first, second],
+      ),
+      expressMode: false,
+    );
+    final departures = jsonDecode(payload.departuresJson) as List<dynamic>;
+
+    expect(departures.first['isFirstDeparture'], isTrue);
+    expect(departures[1]['isFirstDeparture'], isFalse);
   });
 }
